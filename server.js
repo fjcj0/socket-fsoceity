@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
 import { limiter, speedLimiter } from './tools/DDosProtection.js';
+import { socketAuthMiddleware } from './middleware/socket.middlewarew.js';
 const app = express();
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
@@ -34,12 +35,14 @@ const io = new Server(server, {
         credentials: true
     },
 });
+io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
-    socket.join(socket.handshake.query.userId);
-    console.log(`User ${userId} has been joined`);
-    console.log("User connected:", socket.id);
+    const userId = socket.user.id;
+    socket.join(userId);
+    console.log(`User ${userId} joined`);
+    console.log("Socket ID:", socket.id);
     socket.on("disconnect", () => {
-        console.log("User disconnected: ", socket.id);
+        console.log("User disconnected:", socket.id);
     });
 });
 server.listen(process.env.PORT, () => {
