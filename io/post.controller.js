@@ -61,8 +61,8 @@ export function save_post(socket, io) {
                 by: userId,
                 image: created.post.image,
             });
-        } catch (err) {
-            console.error("SAVE ERROR:", err);
+        } catch (error) {
+            console.log(error);
         }
     });
 }
@@ -128,8 +128,8 @@ export function create_like(socket, io) {
                 by: userId,
                 image: created.post.image,
             });
-        } catch (err) {
-            console.error("LIKE ERROR:", err);
+        } catch (error) {
+            console.log(error);
         }
     });
 }
