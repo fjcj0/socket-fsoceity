@@ -9,6 +9,7 @@ import cors from 'cors';
 import { limiter, speedLimiter } from './tools/DDosProtection.js';
 import { socketAuthMiddleware } from './middleware/socket.middlewarew.js';
 import { socketRateLimit } from './tools/socketLimiter.js';
+import { create_like, save_post } from './io/post.controller.js';
 const app = express();
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
@@ -50,6 +51,8 @@ io.on("connection", (socket) => {
     socket.join(userId);
     console.log(`User ${userId} joined`);
     console.log("Socket ID: ", socket.id);
+    save_post(socket, io);
+    create_like(socket, io);
     socket.on("disconnect", () => {
         console.log("User disconnected: ", socket.id);
     });
