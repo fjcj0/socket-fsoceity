@@ -29,6 +29,7 @@ model User {
   verificationTokenExpiresAt DateTime?
   lastVerificationSentAt     DateTime?
   code                       String?
+  createdAt                  DateTime        @default(now())
   posts                      Post[]
   likes                      Like[]
   bookmarks                  Bookmark[]
