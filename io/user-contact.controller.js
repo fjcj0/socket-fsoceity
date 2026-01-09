@@ -1,65 +1,21 @@
+import { updateReceiverRequests, updateUserRequests } from "../handler/user-contact.handler.js";
 import { prisma } from "../lib/prisma.js";
-async function updateUserRequests(socket, userId) {
-    const userPendings = await prisma.friendRequest.findMany({
-        where: { senderId: userId, status: 'PENDING' },
-        select: {
-            receiver: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
-        }
-    });
-    socket.emit('user_pending', userPendings);
-    const userAccepted = await prisma.friendRequest.findMany({
-        where: { senderId: userId, status: 'ACCEPTED' },
-        select: {
-            receiver: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
-        }
-    });
-    socket.emit('user_accepted', userAccepted);
-    const contacts = await prisma.contact.findMany({
-        where: { userId },
-        select: { friendId: true }
-    });
-    const sentRequests = await prisma.friendRequest.findMany({
-        where: { senderId: userId },
-        select: { receiverId: true }
-    });
-    const usersNotSent = await prisma.user.findMany({
-        where: {
-            id: {
-                not: userId,
-                notIn: [
-                    ...contacts.map(c => c.friendId),
-                    ...sentRequests.map(r => r.receiverId)
-                ]
-            }
-        },
-        select: { id: true, name: true, profilePicture: true, createdAt: true }
-    });
-    socket.emit('user_not_sent', usersNotSent);
-}
 export async function send_request(socket) {
     socket.on('send-request', async (receiverId) => {
         if (!socket.user?.id) return;
         try {
-            const request = await prisma.friendRequest.create({
+            await prisma.friendRequest.create({
                 data: { senderId: socket.user.id, receiverId }
             });
-            const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
             socket.to(receiverId).emit('notification', {
                 action: 'A friend request was sent',
                 by: socket.user.name,
                 image: socket.user.profilePicture
             });
-            const recives = await prisma.friendRequest.findMany({
-                where: { receiverId, status: 'PENDING' },
-                select: {
-                    senderId: true,
-                    sender: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
-                }
-            });
-            socket.to(receiverId).emit('recives', recives);
+            await updateReceiverRequests(socket.to(receiverId), receiverId);
             await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     });
 }
@@ -77,22 +33,15 @@ export async function cancel_sent_request(socket) {
                 by: socket.user.name,
                 image: socket.user.profilePicture
             });
-            const recives = await prisma.friendRequest.findMany({
-                where: { receiverId, status: 'PENDING' },
-                select: {
-                    senderId: true,
-                    sender: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
-                }
-            });
-            socket.to(receiverId).emit('recives', recives);
+            await updateReceiverRequests(socket.to(receiverId), receiverId);
             await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     });
 }
-export async function accept_recive(socket) {
-    socket.on('accept-recive', async (senderId) => {
+export async function acceptRequest(socket) {
+    socket.on('accept-request', async (senderId) => {
         if (!socket.user?.id) return;
         try {
             await prisma.friendRequest.update({
@@ -111,14 +60,15 @@ export async function accept_recive(socket) {
                 by: socket.user.name,
                 image: socket.user.profilePicture
             });
+            await updateReceiverRequests(socket, socket.user.id);
             await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     });
 }
-export async function cancel_recive(socket) {
-    socket.on('cancel-recive', async (senderId) => {
+export async function rejectRequest(socket) {
+    socket.on('reject-request', async (senderId) => {
         if (!socket.user?.id) return;
         try {
             const request = await prisma.friendRequest.findFirst({
@@ -131,9 +81,10 @@ export async function cancel_recive(socket) {
                 by: socket.user.name,
                 image: socket.user.profilePicture
             });
+            await updateReceiverRequests(socket, socket.user.id);
             await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     });
 }
@@ -154,9 +105,10 @@ export async function remove_contact(socket) {
                 by: socket.user.name,
                 image: socket.user.profilePicture
             });
+            await updateReceiverRequests(socket.to(friendId), friendId);
             await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.error(error);
+            console.log(error);
         }
     });
 }
