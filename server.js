@@ -41,12 +41,7 @@ const io = new Server(server, {
 });
 io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
-    socket.use(
-        socketRateLimit({
-            limit: 10,
-            interval: 3000,
-        })
-    );
+    socket.use(socketRateLimit({ limit: 10, interval: 3000 }));
     const userId = socket.user.id;
     socket.join(userId);
     console.log(`User ${userId} joined...`);

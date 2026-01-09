@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 export function save_post(socket, io) {
-    socket.on("save", async ({ postId }) => {
+    socket.on("save", async (postId) => {
         try {
             const userId = socket.user.id;
             const isFound = await prisma.bookmark.findUnique({
@@ -31,8 +31,8 @@ export function save_post(socket, io) {
                 });
                 socket.emit("bookmarks", bookmarks);
                 io.to(deleted.post.authorId).emit("notification", {
-                    action: "Your post was unsaved by",
-                    by: userId,
+                    action: "Your post was unsaved",
+                    by: socket.user.name,
                     image: deleted.post.image,
                 });
                 return;
@@ -57,8 +57,8 @@ export function save_post(socket, io) {
             });
             socket.emit("bookmarks", bookmarks);
             io.to(created.post.authorId).emit("notification", {
-                action: "Your post was saved by",
-                by: userId,
+                action: "Your post was saved",
+                by: socket.user.name,
                 image: created.post.image,
             });
         } catch (error) {
@@ -98,14 +98,16 @@ export function create_like(socket, io) {
                 });
                 socket.emit("likes", likes);
                 io.to(deleted.post.authorId).emit("notification", {
-                    action: "Your post was unliked by",
-                    by: userId,
+                    action: "Your post was unliked",
+                    by: socket.user.name,
                     image: deleted.post.image,
                 });
                 return;
             }
             const created = await prisma.like.create({
-                data: { userId, postId },
+                data: {
+                    userId, postId
+                },
                 select: {
                     post: {
                         select: {
@@ -124,8 +126,8 @@ export function create_like(socket, io) {
             });
             socket.emit("likes", likes);
             io.to(created.post.authorId).emit("notification", {
-                action: "Your post was liked by",
-                by: userId,
+                action: "Your post was liked",
+                by: socket.user.name,
                 image: created.post.image,
             });
         } catch (error) {
