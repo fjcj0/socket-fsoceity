@@ -1,232 +1,162 @@
 import { prisma } from "../lib/prisma.js";
-export async function send_request(socket, io) {
-    socket.on('send-request', async (userId) => {
+async function updateUserRequests(socket, userId) {
+    const userPendings = await prisma.friendRequest.findMany({
+        where: { senderId: userId, status: 'PENDING' },
+        select: {
+            receiver: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
+        }
+    });
+    socket.emit('user_pending', userPendings);
+    const userAccepted = await prisma.friendRequest.findMany({
+        where: { senderId: userId, status: 'ACCEPTED' },
+        select: {
+            receiver: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
+        }
+    });
+    socket.emit('user_accepted', userAccepted);
+    const contacts = await prisma.contact.findMany({
+        where: { userId },
+        select: { friendId: true }
+    });
+    const sentRequests = await prisma.friendRequest.findMany({
+        where: { senderId: userId },
+        select: { receiverId: true }
+    });
+    const usersNotSent = await prisma.user.findMany({
+        where: {
+            id: {
+                not: userId,
+                notIn: [
+                    ...contacts.map(c => c.friendId),
+                    ...sentRequests.map(r => r.receiverId)
+                ]
+            }
+        },
+        select: { id: true, name: true, profilePicture: true, createdAt: true }
+    });
+    socket.emit('user_not_sent', usersNotSent);
+}
+export async function send_request(socket) {
+    socket.on('send-request', async (receiverId) => {
+        if (!socket.user?.id) return;
         try {
-            const user = await prisma.user.findUnique({
-                where: {
-                    id: userId
-                }
-            });
             const request = await prisma.friendRequest.create({
-                data: {
-                    senderId: socket?.user?.id,
-                    receiverId: user.id,
-                }, select: {
-                    receiverId: true,
-                    receiver: true,
-                }
+                data: { senderId: socket.user.id, receiverId }
             });
-            socket.to(request.receiverId).emit('notification', {
-                action: `A request sent`,
-                by: request.receiver.name,
-                image: request.receiver.profilePicture
+            const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
+            socket.to(receiverId).emit('notification', {
+                action: 'A friend request was sent',
+                by: socket.user.name,
+                image: socket.user.profilePicture
             });
             const recives = await prisma.friendRequest.findMany({
-                where: {
-                    receiverId: user.id,
-                    status: 'PENDING'
-                },
+                where: { receiverId, status: 'PENDING' },
                 select: {
                     senderId: true,
-                    sender: {
-                        select: {
-                            profilePicture: true,
-                            createdAt: true,
-                            name: true,
-                            id: true
-                        }
-                    }
+                    sender: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
                 }
             });
-            socket.to(request.receiverId).emit('recives', recives);
-            const user_pendings = await prisma.friendRequest.findMany({
-                where: {
-                    senderId: socket?.user?.id,
-                    status: 'PENDING'
-                },
-                select: {
-                    receiver: {
-                        select: {
-                            id: true,
-                            name: true,
-                            profilePicture: true,
-                            createdAt: true,
-                        }
-                    }
-                }
-            });
-            socket.to(socket?.user?.id).emit('user_pending', user_pendings);
-            const user_accepted = await prisma.friendRequest.findMany({
-                where: {
-                    senderId: socket?.user?.id,
-                    status: 'ACCEPTED'
-                },
-                select: {
-                    receiver: {
-                        select: {
-                            id: true,
-                            name: true,
-                            profilePicture: true,
-                            createdAt: true,
-                        }
-                    }
-                }
-            });
-            socket.to(socket?.user?.id).emit('user_accepted', user_accepted);
-            const users_not_sent = await prisma.user.findMany({
-                where: {
-                    id: {
-                        not: socket.user.id,
-                        notIn: [
-                            ...(await prisma.contact.findMany({
-                                where: { userId: socket.user.id },
-                                select: { friendId: true }
-                            })).map(c => c.friendId),
-                            ...(await prisma.friendRequest.findMany({
-                                where: { senderId: socket.user.id },
-                                select: { receiverId: true }
-                            })).map(r => r.receiverId)
-                        ]
-                    }
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    profilePicture: true,
-                    createdAt: true,
-                }
-            });
-            socket.to(socket.user.id).emit('user_not_sent', users_not_sent);
+            socket.to(receiverId).emit('recives', recives);
+            await updateUserRequests(socket, socket.user.id);
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
     });
 }
-export async function cancel_sent_request(socket, io) {
-    try {
-        socket.on('cancel-request', async (userId) => {
-            try {
-                const user = await prisma.user.findUnique({
-                    where: {
-                        id: userId
-                    }
-                });
-                const request = await prisma.friendRequest.create({
-                    data: {
-                        senderId: socket?.user?.id,
-                        receiverId: user.id,
-                    }, select: {
-                        receiverId: true,
-                        receiver: true,
-                    }
-                });
-                socket.to(request.receiverId).emit('notification', {
-                    action: `A request sent`,
-                    by: request.receiver.name,
-                    image: request.receiver.profilePicture
-                });
-                const recives = await prisma.friendRequest.findMany({
-                    where: {
-                        receiverId: user.id,
-                        status: 'PENDING'
-                    },
-                    select: {
-                        senderId: true,
-                        sender: {
-                            select: {
-                                profilePicture: true,
-                                createdAt: true,
-                                name: true,
-                                id: true
-                            }
-                        }
-                    }
-                });
-                socket.to(request.receiverId).emit('recives', recives);
-                const user_pendings = await prisma.friendRequest.findMany({
-                    where: {
-                        senderId: socket?.user?.id,
-                        status: 'PENDING'
-                    },
-                    select: {
-                        receiver: {
-                            select: {
-                                id: true,
-                                name: true,
-                                profilePicture: true,
-                                createdAt: true,
-                            }
-                        }
-                    }
-                });
-                socket.to(socket?.user?.id).emit('user_pending', user_pendings);
-                const user_accepted = await prisma.friendRequest.findMany({
-                    where: {
-                        senderId: socket?.user?.id,
-                        status: 'ACCEPTED'
-                    },
-                    select: {
-                        receiver: {
-                            select: {
-                                id: true,
-                                name: true,
-                                profilePicture: true,
-                                createdAt: true,
-                            }
-                        }
-                    }
-                });
-                socket.to(socket?.user?.id).emit('user_accepted', user_accepted);
-                const users_not_sent = await prisma.user.findMany({
-                    where: {
-                        id: {
-                            not: socket.user.id,
-                            notIn: [
-                                ...(await prisma.contact.findMany({
-                                    where: { userId: socket.user.id },
-                                    select: { friendId: true }
-                                })).map(c => c.friendId),
-                                ...(await prisma.friendRequest.findMany({
-                                    where: { senderId: socket.user.id },
-                                    select: { receiverId: true }
-                                })).map(r => r.receiverId)
-                            ]
-                        }
-                    },
-                    select: {
-                        id: true,
-                        name: true,
-                        profilePicture: true,
-                        createdAt: true,
-                    }
-                });
-                socket.to(socket.user.id).emit('user_not_sent', users_not_sent);
-            } catch (error) {
-                console.log(error);
-            }
-        });
-    } catch (error) {
-        console.log(error);
-    }
+export async function cancel_sent_request(socket) {
+    socket.on('cancel-sent-request', async (receiverId) => {
+        if (!socket.user?.id) return;
+        try {
+            const request = await prisma.friendRequest.findFirst({
+                where: { senderId: socket.user.id, receiverId }
+            });
+            if (!request) return;
+            await prisma.friendRequest.delete({ where: { id: request.id } });
+            socket.to(receiverId).emit('notification', {
+                action: 'A friend request was cancelled',
+                by: socket.user.name,
+                image: socket.user.profilePicture
+            });
+            const recives = await prisma.friendRequest.findMany({
+                where: { receiverId, status: 'PENDING' },
+                select: {
+                    senderId: true,
+                    sender: { select: { id: true, name: true, profilePicture: true, createdAt: true } }
+                }
+            });
+            socket.to(receiverId).emit('recives', recives);
+            await updateUserRequests(socket, socket.user.id);
+        } catch (error) {
+            console.error(error);
+        }
+    });
 }
-export async function accept_request(socket, io) {
-    try {
-
-    } catch (error) {
-        console.log(error);
-    }
+export async function accept_recive(socket) {
+    socket.on('accept-recive', async (senderId) => {
+        if (!socket.user?.id) return;
+        try {
+            await prisma.friendRequest.update({
+                where: { senderId_receiverId: { senderId, receiverId: socket.user.id } },
+                data: { status: 'ACCEPTED' }
+            });
+            await prisma.contact.createMany({
+                data: [
+                    { userId: socket.user.id, friendId: senderId },
+                    { userId: senderId, friendId: socket.user.id }
+                ],
+                skipDuplicates: true
+            });
+            socket.to(senderId).emit('notification', {
+                action: 'Your friend request was accepted',
+                by: socket.user.name,
+                image: socket.user.profilePicture
+            });
+            await updateUserRequests(socket, socket.user.id);
+        } catch (error) {
+            console.error(error);
+        }
+    });
 }
-export async function cancel_request(socket, io) {
-    try {
-
-    } catch (error) {
-        console.log(error);
-    }
+export async function cancel_recive(socket) {
+    socket.on('cancel-recive', async (senderId) => {
+        if (!socket.user?.id) return;
+        try {
+            const request = await prisma.friendRequest.findFirst({
+                where: { senderId, receiverId: socket.user.id }
+            });
+            if (!request) return;
+            await prisma.friendRequest.delete({ where: { id: request.id } });
+            socket.to(senderId).emit('notification', {
+                action: 'Your friend request was rejected',
+                by: socket.user.name,
+                image: socket.user.profilePicture
+            });
+            await updateUserRequests(socket, socket.user.id);
+        } catch (error) {
+            console.error(error);
+        }
+    });
 }
-export async function remove_contact(socket, io) {
-    try {
-
-    } catch (error) {
-        console.log(error);
-    }
+export async function remove_contact(socket) {
+    socket.on('remove-contact', async (friendId) => {
+        if (!socket.user?.id) return;
+        try {
+            await prisma.contact.deleteMany({
+                where: {
+                    OR: [
+                        { userId: socket.user.id, friendId },
+                        { userId: friendId, friendId: socket.user.id }
+                    ]
+                }
+            });
+            socket.to(friendId).emit('notification', {
+                action: 'You were removed from contacts',
+                by: socket.user.name,
+                image: socket.user.profilePicture
+            });
+            await updateUserRequests(socket, socket.user.id);
+        } catch (error) {
+            console.error(error);
+        }
+    });
 }
