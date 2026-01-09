@@ -43,13 +43,13 @@ io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
     socket.use(
         socketRateLimit({
-            limit: 5,
+            limit: 10,
             interval: 3000,
         })
     );
     const userId = socket.user.id;
     socket.join(userId);
-    console.log(`User ${userId} joined`);
+    console.log(`User ${userId} joined...`);
     console.log("Socket ID: ", socket.id);
     save_post(socket, io);
     create_like(socket, io);
