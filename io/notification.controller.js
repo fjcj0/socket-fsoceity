@@ -10,7 +10,7 @@ export async function SendNotification(socket, io) {
         socket.to(reciverId).emit('notification', {
             action: 'Your request has been accepted',
             by: socket?.user?.name,
-            image: socket?.user?.name
+            image: socket?.user?.profilePicture
         });
     });
 }
