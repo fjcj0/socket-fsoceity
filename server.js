@@ -10,6 +10,7 @@ import { limiter, speedLimiter } from './tools/DDosProtection.js';
 import { socketAuthMiddleware } from './middleware/socket.middlewarew.js';
 import { socketRateLimit } from './tools/socketLimiter.js';
 import { create_like, save_post } from './io/post.controller.js';
+import { SendNotification } from './io/notification.controller.js';
 const app = express();
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
@@ -48,6 +49,7 @@ io.on("connection", (socket) => {
     console.log("Socket ID: ", socket.id);
     save_post(socket, io);
     create_like(socket, io);
+    SendNotification(socket, io);
     socket.on("disconnect", () => {
         console.log("User disconnected: ", socket.id);
     });
