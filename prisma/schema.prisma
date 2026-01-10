@@ -16,12 +16,12 @@ enum RequestStatus {
 }
 
 model User {
-  id                         String          @id @default(uuid())
+  id                         String           @id @default(uuid())
   name                       String
-  email                      String          @unique
+  email                      String           @unique
   password                   String
   bio                        String?
-  profilePicture             String?         @default("/account.png")
+  profilePicture             String?          @default("/account.png")
   resetToken                 String?
   resetTokenExpiresAt        DateTime?
   lastResetTokenSentAt       DateTime?
@@ -29,14 +29,16 @@ model User {
   verificationTokenExpiresAt DateTime?
   lastVerificationSentAt     DateTime?
   code                       String?
-  createdAt                  DateTime        @default(now())
+  createdAt                  DateTime         @default(now())
   posts                      Post[]
   likes                      Like[]
   bookmarks                  Bookmark[]
-  sentFriendRequests         FriendRequest[] @relation("SentFriendRequests")
-  receivedFriendRequests     FriendRequest[] @relation("ReceivedFriendRequests")
-  contacts                   Contact[]       @relation("UserContacts")
-  friends                    Contact[]       @relation("FriendContacts")
+  sentFriendRequests         FriendRequest[]  @relation("SentFriendRequests")
+  receivedFriendRequests     FriendRequest[]  @relation("ReceivedFriendRequests")
+  contacts                   Contact[]        @relation("UserContacts")
+  friends                    Contact[]        @relation("FriendContacts")
+  sentMessages               ContactMessage[] @relation("SentContactMessages")
+  receivedMessages           ContactMessage[] @relation("ReceivedContactMessages")
 }
 
 model FriendRequest {
@@ -61,6 +63,19 @@ model Contact {
   friend    User     @relation("FriendContacts", fields: [friendId], references: [id])
 
   @@unique([userId, friendId])
+}
+
+model ContactMessage {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String?
+  image      String?
+  createdAt  DateTime @default(now())
+  sender     User     @relation("SentContactMessages", fields: [senderId], references: [id])
+  receiver   User     @relation("ReceivedContactMessages", fields: [receiverId], references: [id])
+
+  @@index([senderId, receiverId])
 }
 
 model Post {
