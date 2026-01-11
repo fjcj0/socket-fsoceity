@@ -47,7 +47,9 @@ io.on("connection", (socket) => {
     const userId = socket.user.id;
     socket.join(userId);
     onlineUsers.add(userId);
-    io.emit("online-users", Array.from(onlineUsers));
+    socket.on("get-online-users", () => {
+        socket.emit("online-users", Array.from(onlineUsers));
+    });
     console.log(`User ${userId} joined...`);
     console.log("Socket ID: ", socket.id);
     save_post(socket, io);
