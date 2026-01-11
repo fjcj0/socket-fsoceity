@@ -11,6 +11,7 @@ import { socketAuthMiddleware } from './middleware/socket.middlewarew.js';
 import { socketRateLimit } from './tools/socketLimiter.js';
 import { create_like, save_post } from './io/post.controller.js';
 import { SendNotification } from './io/notification.controller.js';
+const onlineUsers = new Set();
 const app = express();
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
@@ -45,12 +46,16 @@ io.on("connection", (socket) => {
     socket.use(socketRateLimit({ limit: 10, interval: 3000 }));
     const userId = socket.user.id;
     socket.join(userId);
+    onlineUsers.add(userId);
+    io.emit("online-users", Array.from(onlineUsers));
     console.log(`User ${userId} joined...`);
     console.log("Socket ID: ", socket.id);
     save_post(socket, io);
     create_like(socket, io);
     SendNotification(socket, io);
     socket.on("disconnect", () => {
+        onlineUsers.delete(userId);
+        io.emit("online-users", Array.from(onlineUsers));
         console.log("User disconnected: ", socket.id);
     });
 });
