@@ -1,13 +1,13 @@
-export async function check_contact(socket, next) {
+export async function checkContact(socket, receiverId) {
     const isContact = await prisma.contact.findFirst({
         where: {
             OR: [
-                { userId: senderId, friendId: receiverId },
-                { userId: receiverId, friendId: senderId }
+                { userId: socket?.user?.id, friendId: receiverId },
+                { userId: receiverId, friendId: socket?.user?.id }
             ]
         }
-    })
+    });
     if (!isContact) {
-        next(new Error("You can't send message to this user it's not from your contact"));
+        throw new Error("You can't send messages to users who are not in your contacts");
     }
 }
