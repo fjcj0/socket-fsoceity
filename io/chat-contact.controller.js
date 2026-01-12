@@ -5,7 +5,6 @@ export async function send_contact_message(socket, io) {
         try {
             const senderId = socket.user.id;
             const { receiverId, content, image, voice } = data;
-
             const isContact = await prisma.contact.findFirst({
                 where: {
                     OR: [
@@ -29,7 +28,6 @@ export async function send_contact_message(socket, io) {
                     receiver: { select: { id: true, name: true, profilePicture: true } }
                 }
             });
-
             io.to(senderId).emit("receive-message", message);
             io.to(receiverId).emit("receive-message", message);
         } catch (error) {
