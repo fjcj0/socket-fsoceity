@@ -3,25 +3,37 @@ import { checkContact } from "../middleware/check_contact.middleware.js";
 export async function send_contact_message(socket, io) {
     socket.on('on-send-contact-message', async (data) => {
         try {
-            const { receiverId, content, image } = data;
-            await checkContact(socket, receiverId);
-            const message = await prisma.contactMessage.create({
-                data: {
-                    senderId: socket?.user?.id,
-                    receiverId,
-                    content: content || null,
-                    image: image || null
-                },
-                select: {
-                    id: true,
+            const senderId = socket.user.id;
+            const { receiverId, content, image, voice } = data;
+
+            const isContact = await prisma.contact.findFirst({
+                where: {
+                    OR: [
+                        { userId: senderId, friendId: receiverId },
+                        { userId: receiverId, friendId: senderId }
+                    ]
                 }
             });
-            socket.emit([socket?.user?.id, receiverId], message)
-        } catch (error) {
-            console.error(error.message);
-            socket.emit('error', {
-                message: error.message
+            if (!isContact) return;
+
+            const message = await prisma.contactMessage.create({
+                data: {
+                    senderId,
+                    receiverId,
+                    content,
+                    image,
+                    voice
+                },
+                include: {
+                    sender: { select: { id: true, name: true, profilePicture: true } },
+                    receiver: { select: { id: true, name: true, profilePicture: true } }
+                }
             });
+
+            io.to(senderId).emit("receive-message", message);
+            io.to(receiverId).emit("receive-message", message);
+        } catch (error) {
+            console.log(error);
         }
     });
 }

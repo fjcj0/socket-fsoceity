@@ -71,6 +71,7 @@ model ContactMessage {
   receiverId String
   content    String?
   image      String?
+  voice      String?
   createdAt  DateTime @default(now())
   sender     User     @relation("SentContactMessages", fields: [senderId], references: [id])
   receiver   User     @relation("ReceivedContactMessages", fields: [receiverId], references: [id])
