@@ -39,7 +39,8 @@ const io = new Server(server, {
     cors: {
         origin: process.env.SERVER,
         credentials: true
-    }
+    },
+    transports: ["websocket"],
 });
 io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
