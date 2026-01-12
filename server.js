@@ -39,10 +39,7 @@ const io = new Server(server, {
     cors: {
         origin: process.env.SERVER,
         credentials: true
-    },
-    pingTimeout: 20000,
-    pingInterval: 25000,
-    transports: ["websocket", "polling"]
+    }
 });
 io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
