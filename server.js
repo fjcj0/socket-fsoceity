@@ -12,6 +12,7 @@ import { socketRateLimit } from './tools/socketLimiter.js';
 import { create_like, save_post } from './io/post.controller.js';
 import { SendNotification } from './io/notification.controller.js';
 import { send_contact_message } from './io/chat-contact.controller.js';
+import { job } from './tools/cron.js';
 const onlineUsers = new Set();
 const app = express();
 app.use(cookieParser(process.env.COOKIE_SECRET));
