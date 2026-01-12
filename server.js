@@ -19,7 +19,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
 app.use(helmet());
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: process.env.SERVER,
     credentials: true
 }));
 app.use(express.json());
