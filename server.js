@@ -37,7 +37,7 @@ app.get('/cron', (request, response) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: `http://localhost:3000`,
+        origin: process.env.SERVER,
         credentials: true
     },
     pingTimeout: 20000,
