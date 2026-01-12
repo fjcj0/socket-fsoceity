@@ -42,6 +42,7 @@ const io = new Server(server, {
     },
     pingTimeout: 20000,
     pingInterval: 25000,
+    transports: ["websocket", "polling"]
 });
 io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
