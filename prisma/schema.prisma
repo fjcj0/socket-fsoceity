@@ -39,6 +39,25 @@ model User {
   friends                    Contact[]        @relation("FriendContacts")
   sentMessages               ContactMessage[] @relation("SentContactMessages")
   receivedMessages           ContactMessage[] @relation("ReceivedContactMessages")
+  createdCalls               Call[]           @relation("CallCreator")
+  allowedCalls               UsersAllowed[]
+}
+
+model Call {
+  id           String         @id @default(uuid())
+  creatorId    String
+  creator      User           @relation("CallCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  allowedUsers UsersAllowed[]
+}
+
+model UsersAllowed {
+  id     String @id @default(uuid())
+  userId String
+  callId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  call   Call   @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, callId])
 }
 
 model FriendRequest {
